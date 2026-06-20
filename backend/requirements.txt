@@ -4,3 +4,8 @@ openai
 python-dotenv
 sqlalchemy
 groq
+langgraph
+langchain
+langchain-core
+langchain-openai
+langchain-community
