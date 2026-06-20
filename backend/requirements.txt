@@ -11,3 +11,4 @@ langchain-openai
 langchain-community
 langchain_groq
 passlib
+jose
