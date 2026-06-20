@@ -15,7 +15,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://aidevops.netlify.app/",
+        "https://6a363f02a2c22e00082fcc2a--aidevops.netlify.app/",
     ],
     allow_credentials=True,
     allow_methods=["*"],
