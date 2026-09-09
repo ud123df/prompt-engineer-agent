@@ -75,5 +75,5 @@ jobs:
           image-ref: 'prompt-engineer-frontend:latest'
           format: 'table'
           exit-code: '0'
-          severity: 'CRITICAL, HIGH'     
+          severity: 'CRITICAL,HIGH'     
 
