@@ -1,0 +1,79 @@
+name: CI Pipeline - Build & Security Scan
+
+on:
+  push:
+    branches: ["main", "devops-setup"]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-ci:
+    name: Build & Scan Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout respository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Set up Docsker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Backend Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          load: true
+          tags: prompt-engineer-backend:latest
+
+      - name: Scan Backend Image for Vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'prompt-engineer-backend:latest'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+  frontend-ci:
+    name: Build & Scan Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend/frontend
+          npm ci
+      - name: Set up Docker Buildx
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend/frontend
+          file: ./frontend/frontend/Dockerfile
+          load: true
+          tags: prompt-engineer-frontend:latest
+
+      - name: Scan Frontend Image for Vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'prompt-engineer-frontend:latest'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL, HIGH'     
+
