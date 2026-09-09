@@ -1,4 +1,4 @@
-name: CI Pipeline - Build & Security Scan
+name: CI/CD Pipeline - Build, Scan & Push to ECR
 
 on:
   push:
@@ -6,74 +6,88 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_BACKEND: 374196135459.dkr.ecr.ap-southeast-1.amazonaws.com/prompt-engineer-agent-backend
+  ECR_FRONTEND: 374196135459.dkr.ecr.ap-southeast-1.amazonaws.com/prompt-engineer-agent-frontend
+
 jobs:
   backend-ci:
-    name: Build & Scan Backend
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout respository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Python Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-
-      - name: Set up Docsker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Build Backend Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          load: true
-          tags: prompt-engineer-backend:latest
-
-      - name: Scan Backend Image for Vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'prompt-engineer-backend:latest'
-          format: 'table'
-          exit-code: '0'
-          severity: 'CRITICAL,HIGH'
-
-  frontend-ci:
-    name: Build & Scan Frontend
+    name: Build & Push Backend
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          node-version: "20"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install Frontend Dependencies
-        run: |
-          cd frontend/frontend
-          npm ci
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.ECR_BACKEND }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build and Push Docker Image to ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.ECR_BACKEND }}:${{ github.sha }}
+            ${{ env.ECR_BACKEND }}:latest
+
+  frontend-ci:
+    name: Build & Push Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.ECR_FRONTEND }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build and Push Docker Image to ECR
         uses: docker/build-push-action@v5
         with:
           context: ./frontend/frontend
           file: ./frontend/frontend/Dockerfile
-          load: true
-          tags: prompt-engineer-frontend:latest
-
-      - name: Scan Frontend Image for Vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'prompt-engineer-frontend:latest'
-          format: 'table'
-          exit-code: '0'
-          severity: 'CRITICAL,HIGH'     
-
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.ECR_FRONTEND }}:${{ github.sha }}
+            ${{ env.ECR_FRONTEND }}:latest

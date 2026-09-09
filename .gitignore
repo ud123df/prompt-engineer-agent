@@ -27,4 +27,18 @@ dist/
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.db# Terraform artifacts
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Environment & Secrets
+.env
+*.pem
+
+# Node / Python build artifacts
+node_modules/
+dist/
+__pycache__/
+*.pyc
